@@ -57,7 +57,7 @@ custom_colors = [
 
 num_configs = len(configs)
 index = np.arange(len(benchmarks))
-bar_width = 0.85 / num_configs  # Ajustement de la largeur des barres
+bar_width = 0.7 / num_configs  # Ajustement de la largeur des barres
 
 # Création du graphique
 fig, ax = plt.subplots(figsize=(20, 10))
