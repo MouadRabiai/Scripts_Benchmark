@@ -1,21 +1,40 @@
 import re
 
-def extract_cpi(report):
+def extract_cache_stats(report):
+    # Regex pour capturer les informations de hits et misses des caches
+    exec_blocks = re.findall(
+        r"EXEC NAME: (.+?)\n.*?L1I hits: (\d+).*?L1I misses: (\d+).*?L1D hits: (\d+).*?L1D misses: (\d+).*?L2 hits: (\d+).*?L2 misses: (\d+)",
+        report, re.DOTALL)
 
-    exec_blocks = re.findall(r"EXEC NAME: (.+?)\n.*?Real cycles: (\d+).*?Real instructions: (\d+)", report, re.DOTALL)
+    # Initialisation des variables pour stocker les totaux globaux
+    global_l1i_hits = 0
+    global_l1i_misses = 0
+    global_l1d_hits = 0
+    global_l1d_misses = 0
+    global_l2_hits = 0
+    global_l2_misses = 0
 
-    for exec_name, cycles, instructions in exec_blocks:
+    # Parcourir chaque bloc de données extrait
+    for exec_name, l1i_hits, l1i_misses, l1d_hits, l1d_misses, l2_hits, l2_misses in exec_blocks:
+        # Convertir les valeurs en entiers
+        l1i_hits = int(l1i_hits)
+        l1i_misses = int(l1i_misses)
+        l1d_hits = int(l1d_hits)
+        l1d_misses = int(l1d_misses)
+        l2_hits = int(l2_hits)
+        l2_misses = int(l2_misses)
 
-        cycles = int(cycles)
-        instructions = int(instructions)
+        # Calculer les totaux pour chaque programme
+        total_hits = l1i_hits + l1d_hits + l2_hits
+        total_misses = l1i_misses + l1d_misses + l2_misses
 
+        # Afficher les résultats pour chaque programme
+        print(f"Programme: {exec_name}")
+        print(f"  Total hits: {total_hits}")
+        print(f"  Total misses: {total_misses}")
+        print("\n")
 
-        cpi = cycles / instructions if instructions != 0 else float('inf')
-
-
-        print(f"{exec_name}: CPI = {cpi:.3f}")
-
-
+# Exemple de rapport (à remplacer par votre rapport complet)
 report_data = """
 EXEC NAME: aha-mont64
 [1;32mTEST REPORT: SUCCESS.[0m
@@ -1647,6 +1666,8 @@ L2 prefetches: 0
 
 
 
+
 """
 
-extract_cpi(report_data)
+# Appel de la fonction pour analyser le rapport
+extract_cache_stats(report_data)
