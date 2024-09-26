@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import defaultdict
 
 # Données des benchmarks
 benchmarks = [
@@ -14,7 +15,7 @@ benchmarks = [
 configs = {
     "WAESP32AU1V010FIFNoNlpNoHpmMulReg": [1.979, 2.273, 2.110, 1.997, 2.360, 2.324, 2.049, 2.438, 2.264, 1.552,
                                           1.551, 3.164, 1.872, 2.896, 1.919, 2.430, 2.350, 2.257, 1.864, 2.918,
-                                          2.445, 2.435],
+                                          2.445, 2.437],
     "WAESP32AU1V010FIFNoNlpNoHpmMulRegDiv2": [1.979, 2.273, 2.110, 1.997, 2.360, 2.324, 2.049, 2.438, 2.264, 1.552,
                                             1.551, 3.164, 1.872, 2.896, 1.919, 2.430, 2.350, 2.257, 1.864, 2.918,
                                               2.445, 2.437],
@@ -39,9 +40,9 @@ configs = {
     "WAESP32AU1V010NoHpm2Btb16": [1.186, 1.274, 1.559, 1.434, 1.604, 1.749, 1.126, 1.738, 1.516, 1.048,
                                   1.071, 3.319, 1.310, 2.205, 1.471, 1.871, 1.803, 1.627, 1.679, 1.801,
                                   1.885, 1.697],
-    "WAESP32AU1V010NoHpm2Btb8": [1.187, 1.274, 1.565, 1.434, 1.631, 1.749, 1.131, 1.754, 1.532, 1.048,
-                                 1.071, 3.319, 1.310, 2.205, 1.471, 1.871, 1.803, 1.627, 1.679, 1.801,
-                                 1.885, 1.697],
+    "WAESP32AU1V010NoHpm2Btb8": [1.186, 1.274, 1.559, 1.434, 1.604, 1.749, 1.126, 1.738, 1.516, 1.048,
+                                  1.071, 3.319, 1.310, 2.205, 1.471, 1.871, 1.803, 1.627, 1.679, 1.801,
+                                  1.885, 1.697],
     "WAESP32AU1V010NoHpm2Btb16IFReg": [1.915, 1.773, 2.161, 1.557, 2.202, 1.816, 1.968, 2.557, 2.311, 1.566,
                                        1.568, 3.697, 1.807, 2.843, 1.867, 2.443, 2.511, 2.311, 2.025, 2.392,
                                        2.564, 2.411],
@@ -50,46 +51,72 @@ configs = {
                                       2.564, 2.411]
 }
 
-# Calculating the average CPI for each benchmark across all configurations
-cpi_mean = np.mean(list(configs.values()), axis=0)
+# Regrouper les configurations qui ont exactement le même CPI pour tous les benchmarks
+grouped_cpi = defaultdict(list)
+for config_name, cpis in configs.items():
+    # Utiliser un tuple des CPI pour comparer sur tous les benchmarks
+    cpi_tuple = tuple(cpis)
+    grouped_cpi[cpi_tuple].append(config_name)
 
-# Calculating percentage differences from the average
-percent_diff = {label: (np.array(cpi) - cpi_mean) / cpi_mean * 100 for label, cpi in configs.items()}
+# Couleurs pour les groupes de configurations
+colors = plt.get_cmap('tab20').colors
+color_mapping = {}  # Associer une couleur à chaque groupe de configurations
+color_index = 0
 
-# Number of configurations and benchmarks
-num_configs = len(configs)
-index = np.arange(len(benchmarks))
-bar_width = 14 / num_configs  # Adjusting the width of the bars
+# Création du graphique
+fig, ax = plt.subplots(figsize=(25, 15))  # Augmenter la taille de la figure pour accommoder les barres plus larges
 
-# Adjusting figure size for more space to display percentages clearly
-fig, ax = plt.subplots(figsize=(25, 15))  # Increase the figure size
+# Paramètres de largeur et décalage des barres
+bar_width = 0.6  # Augmenter la largeur des barres
+spacing_between_programs = 5  # Augmenter l'espacement entre les benchmarks
 
-# Plotting the bars for each configuration
-for i, (label, cpi) in enumerate(configs.items()):
-    bars = ax.bar(16 * index + i * bar_width, cpi, bar_width, label=label)
+# Positions des barres avec un espacement ajouté
+bar_positions = np.arange(len(benchmarks)) * (1 + spacing_between_programs)
+
+# Déplacement initial pour ajuster les barres côte à côte
+bar_offset = 0
+
+# Tracer les barres pour chaque groupe de configurations ayant le même CPI
+for cpi_tuple, config_names in grouped_cpi.items():
+    # Attribuer une couleur unique pour ce groupe
+    bar_color = colors[color_index % len(colors)]
     
-    # Adding percentage labels above the bars
-    for j, bar in enumerate(bars):
-        height = bar.get_height()
-        ax.annotate(f'{percent_diff[label][j]:.1f}%',
-                    xy=(bar.get_x() + bar.get_width() / 2, height),
-                    xytext=(0, 5),  # Increased offset for more space
-                    textcoords="offset points",
-                    ha='center', va='bottom',
-                    rotation=90, fontsize=5.2)  # Font size and rotation for better readability
+    # Tracer les barres pour ce groupe
+    bars = ax.bar(bar_positions + bar_offset, cpi_tuple, width=bar_width, color=bar_color, label=', '.join(config_names))
 
-# Customizing the axes and title
+    # Ajouter les pourcentages au-dessus des barres
+    for i, bar in enumerate(bars):
+        height = bar.get_height()
+        mean_cpi = np.mean([configs[config][i] for config in configs])
+        percent_diff = ((height - mean_cpi) / mean_cpi) * 100
+        ax.annotate(f'{percent_diff:.1f}%',
+                    xy=(bar.get_x() + bar.get_width() / 2, height),
+                    xytext=(0, 5),
+                    textcoords="offset points",
+                    ha='center', va='bottom', fontsize=7.5, rotation=90)
+    
+    # Stocker la couleur pour chaque configuration
+    for config_name in config_names:
+        color_mapping[config_name] = bar_color
+    
+    # Incrémenter le décalage pour placer la prochaine barre à côté
+    bar_offset += bar_width
+    color_index += 1
+
+# Personnalisation des axes et du titre
 ax.set_xlabel('Nom du benchmark', fontsize=12)
 ax.set_ylabel('CPI', fontsize=12)
-ax.set_title('Comparaison de CPI par programme et configuration', fontsize=14)
-ax.set_xticks(16 * index + bar_width * num_configs / 2 - bar_width / 2)
+ax.set_title('Comparaison de CPI par programme avec regroupement des configurations ayant le même CPI', fontsize=14)
+ax.set_xticks(bar_positions + bar_offset / 2)
 ax.set_xticklabels(benchmarks, rotation=90, fontsize=10)
 
-# Adding a legend
-ax.legend(title="Configurations", bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+# Création de la légende
+legend_handles = [plt.Rectangle((0, 0), 1, 1, color=color_mapping[config_name]) for config_name in color_mapping]
+legend_labels = list(color_mapping.keys())
+ax.legend(legend_handles, legend_labels, title="Configurations", bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
 
-# Adjusting the layout to prevent overlapping
+# Ajustement de la mise en page
 plt.tight_layout()
 
-# Display the plot
+# Affichage du graphique
 plt.show()
